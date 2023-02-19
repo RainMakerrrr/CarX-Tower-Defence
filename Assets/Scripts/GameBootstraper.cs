@@ -1,9 +1,10 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
 using Data;
 using Factories.Monsters;
 using Factories.Projectiles;
 using Monsters;
 using Services.Assets;
+using Services.Configs;
 using Services.Pool;
 using Services.Pool.Monsters;
 using Towers;
@@ -19,20 +20,21 @@ public class GameBootstraper : MonoBehaviour
     private IProjectilePool _projectilePool;
     private IMonsterFactory _monsterFactory;
     private IMonsterPool _monsterPool;
+    private IConfigLoader _configLoader;
 
-    private ProjectilesConfig[] _projectilesConfigs;
+    private Dictionary<ProjectileType, ProjectilesConfig> _projectilesConfigs;
     private MonsterConfig _monsterConfig;
 
     private void Start()
     {
         InitAssetProvider();
         LoadConfigs();
-        
+
         InitProjectileFactory();
         InitProjectilePool();
-        
+
         InitTowers();
-        
+
         InitMonsterFactory();
         InitMonsterPool();
         InitMonsterSpawner();
@@ -43,14 +45,14 @@ public class GameBootstraper : MonoBehaviour
 
     private void LoadConfigs()
     {
-        _projectilesConfigs = _assetProvider.LoadAll<ProjectilesConfig>(AssetPath.ProjectilesConfigs);
-        _monsterConfig = _assetProvider.Load<MonsterConfig>(AssetPath.MonsterConfig);
+        _configLoader = new ConfigLoader(_assetProvider);
+        _monsterConfig = _configLoader.LoadMonsterConfig();
+        _projectilesConfigs = _configLoader.LoadAllProjectilesConfig();
     }
 
     private void InitProjectileFactory() =>
-        _projectileFactory = new ProjectileFactory(_assetProvider,
-            _projectilesConfigs.First(config => config.ProjectileType == ProjectileType.Cannon),
-            _projectilesConfigs.First(config => config.ProjectileType == ProjectileType.Guided));
+        _projectileFactory = new ProjectileFactory(_assetProvider, _projectilesConfigs[ProjectileType.Cannon],
+            _projectilesConfigs[ProjectileType.Guided]);
 
 
     private void InitProjectilePool() => _projectilePool = new ProjectilePool(_projectileFactory);
@@ -62,7 +64,7 @@ public class GameBootstraper : MonoBehaviour
             tower.Construct(_projectilePool);
         }
     }
-    
+
     private void InitMonsterFactory() => _monsterFactory =
         new MonsterFactory(_assetProvider, _monsterConfig.Health, _monsterConfig.MoveSpeed);
 
